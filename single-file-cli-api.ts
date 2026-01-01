@@ -29,6 +29,61 @@ import { Deno, path } from "./lib/deno-polyfill.js";
 
 const VALID_URL_TEST = /^(https?|file):\/\//;
 
+type ProgramOptions = {
+	removeHiddenElements: boolean;
+	removeUnusedStyles: boolean;
+	removeUnusedFonts: boolean;
+	compressHTML: boolean;
+	loadDeferredImages: boolean;
+	loadDeferredImagesMaxIdleTime: number;
+	filenameTemplate: string;
+	filenameMaxLength: number;
+	filenameMaxLengthUnit: string;
+	filenameReplacedCharacters: string[];
+	filenameReplacementCharacter: string;
+	filenameReplacementCharacters: string[];
+	maxResourceSize: number;
+	backgroundSave: boolean;
+	removeAlternativeFonts: boolean;
+	removeAlternativeMedias: boolean;
+	removeAlternativeImages: boolean;
+	groupDuplicateImages: boolean;
+	saveFavicon: boolean;
+	insertMetaCSP: boolean;
+	insertSingleFileComment: boolean;
+	blockScripts: boolean;
+	blockVideos: boolean;
+	blockAudios: boolean;
+	crawlLinks: boolean;
+	crawlInnerLinksOnly: boolean;
+	crawlNoParent: boolean;
+	crawlSyncSession: string;
+	crawlLoadSession: string;
+	crawlSaveSession: string;
+	crawlReplaceURLs: boolean;
+	crawlRemoveURLFragment: boolean;
+	crawlRewriteRules: string[];
+	crawlMaxDepth: number;
+	crawlExternalLinksMaxDepth: number;
+	maxParallelWorkers: number;
+	browserExecutablePath: string;
+	originalUrl: string;
+	consoleMessagesFile: string;
+	debugMessagesFile: string;
+	outputJson: boolean;
+	output: string;
+	dumpContent: boolean;
+	compressContent: boolean;
+	errorsTracesDisabled: boolean;
+	errorsFile: string;
+	url: string;
+	zipScript: string;
+	browserDebug: boolean;
+	browserServer: boolean;
+	outputDirectory: string;
+	filenameConflictAction: string;
+};
+
 const DEFAULT_OPTIONS = {
 	removeHiddenElements: true,
 	removeUnusedStyles: true,
@@ -58,12 +113,28 @@ const DEFAULT_OPTIONS = {
 const STATE_PROCESSING = "processing";
 const STATE_PROCESSED = "processed";
 
+type PageData = any;
+
+type Task = {
+	url: string;
+	originalUrl: string;
+	promise: Promise<PageData> | undefined;
+	filename: any | null;
+	status: string | undefined;
+	options: ProgramOptions;
+	rootTaskURL: string;
+	isInnerLink: boolean;
+	isChild: boolean;
+	depth: number;
+	externalLinkDepth: number;
+}
+
 const { readTextFile, writeTextFile, writeFile, stdout, mkdir, stat, errors } = Deno;
-let tasks = [], maxParallelWorkers, sessionFilename;
+let tasks: Task[] = [], maxParallelWorkers: number, sessionFilename: string;
 
 export { initialize };
 
-async function initialize(options) {
+async function initialize(options: ProgramOptions): Promise<{capture: (urls: (string | [string, ProgramOptions])[], options: ProgramOptions) => Promise<void>, finish: () => Promise<void>}> {
 	options = Object.assign({}, DEFAULT_OPTIONS, options);
 	maxParallelWorkers = options.maxParallelWorkers || 8;
 	try {
@@ -99,11 +170,11 @@ async function initialize(options) {
 	};
 }
 
-async function capture(urls, options) {
-	let newTasks;
+async function capture(urls: (string | [string, ProgramOptions])[], options: ProgramOptions) {
+	let newTasks: Task[];
 	const taskUrls = tasks.map(task => task.url);
 	newTasks = await Promise.all(urls.map(value => {
-		let url, taskOptions;
+		let url: string, taskOptions: ProgramOptions;
 		if (Array.isArray(value)) {
 			url = value[0];
 			taskOptions = Object.assign({}, options, value[1]);
@@ -121,7 +192,7 @@ async function capture(urls, options) {
 	await runTasks();
 }
 
-async function finish(options) {
+async function finish(options: ProgramOptions) {
 	const promiseTasks = tasks.map(task => task.promise);
 	await Promise.all(promiseTasks);
 	if (options.crawlReplaceURLs && !options.compressContent) {
@@ -148,10 +219,10 @@ async function finish(options) {
 	}
 }
 
-function runTasks() {
+function runTasks(): Promise<void[]> {
 	const availableTasks = tasks.filter(task => !task.status).length;
 	const processingTasks = tasks.filter(task => task.status == STATE_PROCESSING).length;
-	const promisesTasks = [];
+	const promisesTasks: Promise<void>[] = [];
 	for (let workerIndex = 0; workerIndex < Math.min(availableTasks, maxParallelWorkers - processingTasks); workerIndex++) {
 		promisesTasks.push(runNextTask());
 	}
@@ -162,7 +233,7 @@ async function runNextTask() {
 	const task = tasks.find(task => !task.status);
 	if (task) {
 		const options = task.options;
-		const taskOptions = JSON.parse(JSON.stringify(options));
+		const taskOptions: ProgramOptions = JSON.parse(JSON.stringify(options));
 		taskOptions.url = task.url;
 		task.status = STATE_PROCESSING;
 		await saveTasks();
@@ -172,7 +243,7 @@ async function runNextTask() {
 		if (pageData) {
 			task.filename = pageData.filename;
 			if (options.crawlLinks && testMaxDepth(task)) {
-				const urls = pageData.links;
+				const urls: string[] = pageData.links;
 				let newTasks = await Promise.all(urls.map(url => createTask(url, options, task, task.rootTaskURL || task.url)));
 				newTasks = newTasks.filter(task => task &&
 					testMaxDepth(task) &&
@@ -188,13 +259,13 @@ async function runNextTask() {
 	}
 }
 
-function testMaxDepth(task) {
+function testMaxDepth(task: Task) {
 	const options = task.options;
 	return (options.crawlMaxDepth == 0 || task.depth <= options.crawlMaxDepth) &&
 		(options.crawlExternalLinksMaxDepth == 0 || task.externalLinkDepth < options.crawlExternalLinksMaxDepth);
 }
 
-async function createTask(url, options, parentTask?, rootTaskURL?) {
+async function createTask(url: string, options: ProgramOptions, parentTask?: Task, rootTaskURL?: string): Promise<Task> {
 	options.originalUrl = url;
 	url = parentTask ? rewriteURL(url, options.crawlRemoveURLFragment, options.crawlRewriteRules) : url;
 	if (url) {
@@ -219,7 +290,10 @@ async function createTask(url, options, parentTask?, rootTaskURL?) {
 			rootTaskURL,
 			depth: parentTask ? parentTask.depth + 1 : 0,
 			externalLinkDepth: isInnerLink ? -1 : parentTask ? parentTask.externalLinkDepth + 1 : -1,
-			options
+			options,
+			promise: undefined,
+			filename: null,
+			status: undefined,
 		};
 	}
 }
@@ -236,7 +310,7 @@ async function saveTasks() {
 	}
 }
 
-function rewriteURL(url, crawlRemoveURLFragment, crawlRewriteRules = []) {
+function rewriteURL(url: string, crawlRemoveURLFragment: boolean, crawlRewriteRules: string[] = []): string {
 	url = url.trim();
 	if (crawlRemoveURLFragment) {
 		url = url.replace(/^(.*?)#.*$/, "$1");
@@ -250,14 +324,14 @@ function rewriteURL(url, crawlRemoveURLFragment, crawlRewriteRules = []) {
 	return url;
 }
 
-function getHostURL(url) {
-	url = new URL(url);
-	return url.protocol + "//" + (url.username ? url.username + (url.password || "") + "@" : "") + url.hostname;
+function getHostURL(url: string): string {
+	const url_url = new URL(url);
+	return url_url.protocol + "//" + (url_url.username ? url_url.username + (url_url.password || "") + "@" : "") + url_url.hostname;
 }
 
-async function capturePage(options) {
+async function capturePage(options: ProgramOptions): Promise<PageData> {
 	try {
-		let filename, content;
+		let filename: string | undefined, content;
 		options.zipScript = getZipScriptSource();
 		const pageData = await backend.getPageData(options);
 		content = pageData.content;
@@ -332,7 +406,7 @@ async function capturePage(options) {
 	}
 }
 
-async function getFilename(filename, options, index = 1) {
+async function getFilename(filename: string, options: ProgramOptions, index = 1): Promise<string> {
 	if (Array.isArray(options.outputDirectory)) {
 		const outputDirectory = options.outputDirectory.pop();
 		if (outputDirectory.startsWith("/")) {
@@ -367,6 +441,6 @@ async function getFilename(filename, options, index = 1) {
 	}
 }
 
-function escapeRegExp(string) {
+function escapeRegExp(string: string): string {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
