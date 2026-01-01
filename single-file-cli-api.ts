@@ -198,7 +198,8 @@ async function finish(options: ProgramOptions) {
 	if (options.crawlReplaceURLs && !options.compressContent) {
 		for (const task of tasks) {
 			try {
-				let pageContent = await readTextFile(task.filename);
+				const outputFilename = options.outputDirectory + task.filename;
+				let pageContent = await readTextFile(outputFilename);
 				tasks.forEach(otherTask => {
 					if (otherTask.filename) {
 						pageContent = pageContent.replace(new RegExp(escapeRegExp("\"" + otherTask.originalUrl + "\""), "gi"), "\"" + otherTask.filename + "\"");
@@ -208,7 +209,7 @@ async function finish(options: ProgramOptions) {
 						pageContent = pageContent.replace(new RegExp(escapeRegExp("=" + otherTask.originalUrl + ">"), "gi"), "=" + filename + ">");
 					}
 				});
-				await writeTextFile(task.filename, pageContent);
+				await writeTextFile(outputFilename, pageContent);
 			} catch {
 				// ignored
 			}
@@ -407,19 +408,7 @@ async function capturePage(options: ProgramOptions): Promise<PageData> {
 }
 
 async function getFilename(filename: string, options: ProgramOptions, index = 1): Promise<string> {
-	if (Array.isArray(options.outputDirectory)) {
-		const outputDirectory = options.outputDirectory.pop();
-		if (outputDirectory.startsWith("/")) {
-			options.outputDirectory = outputDirectory;
-		} else {
-			options.outputDirectory = options.outputDirectory[0] + outputDirectory;
-		}
-	}
-	let outputDirectory = options.outputDirectory || "";
-	if (outputDirectory && !outputDirectory.endsWith("/")) {
-		outputDirectory += "/";
-	}
-	let newFilename = outputDirectory + filename;
+	let newFilename = options.outputDirectory + filename;
 	if (options.filenameConflictAction == "overwrite") {
 		return filename;
 	} else if (options.filenameConflictAction == "uniquify" && index > 1) {
