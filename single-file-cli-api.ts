@@ -194,7 +194,7 @@ function testMaxDepth(task) {
 		(options.crawlExternalLinksMaxDepth == 0 || task.externalLinkDepth < options.crawlExternalLinksMaxDepth);
 }
 
-async function createTask(url, options, parentTask, rootTaskURL) {
+async function createTask(url, options, parentTask?, rootTaskURL?) {
 	options.originalUrl = url;
 	url = parentTask ? rewriteURL(url, options.crawlRemoveURLFragment, options.crawlRewriteRules) : url;
 	if (url) {
@@ -271,7 +271,7 @@ async function capturePage(options) {
 		if (options.outputJson) {
 			if (content instanceof Uint8Array) {
 				const fileReader = new FileReader();
-				fileReader.readAsDataURL(new Blob([content]));
+				fileReader.readAsDataURL(new Blob([content as BlobPart]));
 				content = await new Promise(resolve => {
 					fileReader.onload = () => resolve(fileReader.result);
 				});
