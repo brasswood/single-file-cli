@@ -128,6 +128,7 @@ async function finish(options) {
 		for (const task of tasks) {
 			try {
 				let pageContent = await readTextFile(task.filename);
+				console.log(`Replacing URLs in file ${task.filename}`);
 				tasks.forEach(otherTask => {
 					if (otherTask.filename) {
 						pageContent = pageContent.replace(new RegExp(escapeRegExp("\"" + otherTask.originalUrl + "\""), "gi"), "\"" + otherTask.filename + "\"");
@@ -138,8 +139,9 @@ async function finish(options) {
 					}
 				});
 				await writeTextFile(task.filename, pageContent);
-			} catch {
-				// ignored
+			} catch (error) {
+				console.log(`Error: Failed to replace URLs in file ${task.filename}: ${error.message}`);
+				// continue
 			}
 		}
 	}
