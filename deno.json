@@ -4,10 +4,13 @@
   "description": "SingleFile CLI",
   "nodeModulesDir": "auto",
   "exports": {
-    ".": "./single-file-cli-api.js"
+    ".": "./single-file-cli-api.ts"
   },
   "imports": {
     "simple-cdp": "jsr:@simple-cdp/simple-cdp@^1.8.6",
     "path": "jsr:@std/path@^1.1.2"
+  },
+  "compilerOptions": {
+    "strict": false
   }
 }

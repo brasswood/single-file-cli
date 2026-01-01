@@ -21,7 +21,7 @@
  *   Source.
  */
 
-import { initialize } from "./single-file-cli-api.js";
+import { initialize } from "./single-file-cli-api.ts";
 import { closeBrowser } from "./lib/browser.js";
 import { Deno } from "./lib/deno-polyfill.js";
 import { options, parseArgs } from "./options.js";
