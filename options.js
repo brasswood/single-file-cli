@@ -156,6 +156,7 @@ const OPTIONS_INFO = [{
 	"crawl-sync-session": { description: "Name of the file where to load and save the state of the session", type: "string" },
 	"crawl-max-depth": { description: "Max depth when crawling pages found in internal and external links (0: infinite)", type: "number", defaultValue: 1 },
 	"crawl-external-links-max-depth": { description: "Max depth when crawling pages found in external links (0: infinite)", type: "number", defaultValue: 1 },
+	"crawl-downloads": { description: "Save browser downloads encountered while crawling links", type: "boolean" },
 	"crawl-replace-URLs": { description: "Replace URLs of saved pages with relative paths of saved pages on the filesystem", type: "boolean" },
 	"crawl-rewrite-rule": { description: "Rewrite rule used to rewrite URLs of crawled pages", type: "string[]" },
 }, {
