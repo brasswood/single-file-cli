@@ -269,6 +269,9 @@ async function capturePage(options) {
 			await writeTextFile(options.debugMessagesFile, pageData.debugMessages.map(([timestamp, message]) =>
 				`[${new Date(timestamp).toISOString()}] ${message.join(" ")}`).join("\n"));
 		}
+		if (pageData.download) {
+			return pageData;
+		}
 		if (options.outputJson) {
 			if (content instanceof Uint8Array) {
 				const fileReader = new FileReader();
