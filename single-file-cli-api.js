@@ -126,6 +126,9 @@ async function finish(options) {
 	await Promise.all(promiseTasks);
 	if (options.crawlReplaceURLs && !options.compressContent) {
 		for (const task of tasks) {
+			if (task.download) {
+				continue;
+			}
 			try {
 				const outputFilename = options.outputDirectory + task.filename;
 				let pageContent = await readTextFile(outputFilename);
@@ -172,6 +175,7 @@ async function runNextTask() {
 		task.status = STATE_PROCESSED;
 		if (pageData) {
 			task.filename = pageData.filename;
+			task.download = pageData.download;
 			if (options.crawlLinks && testMaxDepth(task)) {
 				const urls = pageData.links;
 				let newTasks = await Promise.all(urls.map(url => createTask(url, options, task, task.rootTaskURL || task.url)));
