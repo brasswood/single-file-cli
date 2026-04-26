@@ -176,6 +176,7 @@ async function runNextTask() {
 		if (pageData) {
 			task.filename = pageData.filename;
 			task.download = pageData.download;
+			task.downloadPath = pageData.downloadPath;
 			if (options.crawlLinks && testMaxDepth(task)) {
 				const urls = pageData.links;
 				let newTasks = await Promise.all(urls.map(url => createTask(url, options, task, task.rootTaskURL || task.url)));
