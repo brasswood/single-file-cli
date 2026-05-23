@@ -185,7 +185,7 @@ async function runNextTask() {
 					!tasks.find(otherTask => otherTask.url == task.url) &&
 					!newTasks.find(otherTask => otherTask != task && otherTask.url == task.url) &&
 					(!options.crawlInnerLinksOnly || task.isInnerLink) &&
-					(!options.crawlNoParent || (task.isChild || !task.isInnerLink)));
+					(!options.crawlNoParent || isAllowedByNoParentOptions(task, options)));
 				tasks.splice(tasks.length, 0, ...newTasks);
 			}
 		}
@@ -198,6 +198,13 @@ function testMaxDepth(task) {
 	const options = task.options;
 	return (options.crawlMaxDepth == 0 || task.depth <= options.crawlMaxDepth) &&
 		(options.crawlExternalLinksMaxDepth == 0 || task.externalLinkDepth < options.crawlExternalLinksMaxDepth);
+}
+
+function isAllowedByNoParentOptions(task, options) {
+	if (!task.isInnerLink || task.isChild) {
+		return true;
+	}
+	return matchesURLPatterns(task.url, options.crawlNoParentExceptions);
 }
 
 async function createTask(url, options, parentTask, rootTaskURL) {
@@ -254,6 +261,10 @@ function rewriteURL(url, crawlRemoveURLFragment, crawlRewriteRules = []) {
 		}
 	});
 	return url;
+}
+
+function matchesURLPatterns(url, patterns = []) {
+	return patterns.some(pattern => new RegExp(pattern).test(url));
 }
 
 function getHostURL(url) {

@@ -150,6 +150,7 @@ const OPTIONS_INFO = [{
 	"crawl-links": { description: "Crawl and save pages found via inner links", type: "boolean" },
 	"crawl-inner-links-only": { description: "Crawl pages found via inner links only if they are hosted on the same domain", type: "boolean", defaultValue: true },
 	"crawl-no-parent": { description: "Crawl pages found via inner links only if their URLs are not parent of the URL to crawl", type: "boolean" },
+	"crawl-no-parent-exception": { description: "Regular expression matching inner-link URLs that are exempt from --crawl-no-parent", type: "string[]" },
 	"crawl-load-session": { description: "Name of the file of the session to load (previously saved with --crawl-save-session or --crawl-sync-session)", type: "string" },
 	"crawl-remove-URL-fragment": { description: "Remove URL fragments found in links", type: "boolean", defaultValue: true },
 	"crawl-save-session": { description: "Name of the file where to save the state of the session", type: "string" },

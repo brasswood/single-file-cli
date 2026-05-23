@@ -137,6 +137,13 @@ Make sure Chrome or a Chromium-based browser is installed in the default folder.
   single-file https://www.wikipedia.org --crawl-links=true --crawl-inner-links-only=true --crawl-max-depth=1 --crawl-rewrite-rule="^(.*)\\?.*$ $1"
   ```
 
+  - Save https://www.example.com/docs/guide/ and crawl its internal links without
+    going above the root, except matching parent URLs under `/docs/shared/`
+
+  ```sh
+  single-file https://www.example.com/docs/guide/ --crawl-links=true --crawl-no-parent=true --crawl-no-parent-exception="^https://www\\.example\\.com/docs/shared/"
+  ```
+
   - Save https://www.wikipedia.org and external links only
 
   ```sh
