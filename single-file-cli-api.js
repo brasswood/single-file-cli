@@ -65,6 +65,7 @@ export { initialize };
 
 async function initialize(options) {
 	options = Object.assign({}, DEFAULT_OPTIONS, options);
+	validateOptions(options);
 	maxParallelWorkers = options.maxParallelWorkers || 8;
 	try {
 		await backend.initialize(options);
@@ -111,6 +112,7 @@ async function capture(urls, options) {
 			url = value;
 			taskOptions = options;
 		}
+		validateOptions(taskOptions);
 		return createTask(url, taskOptions);
 	}));
 	newTasks = newTasks.filter(task => task && !taskUrls.includes(task.url));
@@ -207,6 +209,11 @@ function isAllowedByNoParentOptions(task, options) {
 	return matchesURLPatterns(task.url, options.crawlNoParentExceptions);
 }
 
+function validateOptions(options) {
+	validateRegExpOptions(options.crawlNoParentExceptions, "crawl-no-parent-exception");
+	validateRewriteRules(options.crawlRewriteRules);
+}
+
 async function createTask(url, options, parentTask, rootTaskURL) {
 	options.originalUrl = url;
 	url = parentTask ? rewriteURL(url, options.crawlRemoveURLFragment, options.crawlRewriteRules) : url;
@@ -265,6 +272,29 @@ function rewriteURL(url, crawlRemoveURLFragment, crawlRewriteRules = []) {
 
 function matchesURLPatterns(url, patterns = []) {
 	return patterns.some(pattern => new RegExp(pattern).test(url));
+}
+
+function validateRegExpOptions(patterns = [], optionName) {
+	patterns.forEach(pattern => {
+		try {
+			new RegExp(pattern);
+		} catch (error) {
+			throw new Error(`Invalid regular expression passed to --${optionName}: ${pattern}`, { cause: error });
+		}
+	});
+}
+
+function validateRewriteRules(rewriteRules = []) {
+	rewriteRules.forEach(rewriteRule => {
+		const parts = rewriteRule.trim().split(/ +/);
+		if (parts.length && parts[0]) {
+			try {
+				new RegExp(parts[0]);
+			} catch (error) {
+				throw new Error(`Invalid regular expression passed to --crawl-rewrite-rule: ${parts[0]}`, { cause: error });
+			}
+		}
+	});
 }
 
 function getHostURL(url) {
