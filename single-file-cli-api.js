@@ -57,6 +57,7 @@ const DEFAULT_OPTIONS = {
 };
 const STATE_PROCESSING = "processing";
 const STATE_PROCESSED = "processed";
+const STATE_FAILED = "failed";
 
 const { readTextFile, writeTextFile, writeFile, stdout, mkdir, stat, errors } = Deno;
 let tasks = [], maxParallelWorkers, sessionFilename;
@@ -171,25 +172,31 @@ async function runNextTask() {
 		const taskOptions = JSON.parse(JSON.stringify(options));
 		taskOptions.url = task.url;
 		task.status = STATE_PROCESSING;
+		task.error = undefined;
 		await saveTasks();
-		task.promise = capturePage(taskOptions);
-		const pageData = await task.promise;
-		task.status = STATE_PROCESSED;
-		if (pageData) {
-			task.filename = pageData.filename;
-			task.download = pageData.download;
-			task.downloadPath = pageData.downloadPath;
-			if (options.crawlLinks && testMaxDepth(task)) {
-				const urls = pageData.links;
-				let newTasks = await Promise.all(urls.map(url => createTask(url, options, task, task.rootTaskURL || task.url)));
-				newTasks = newTasks.filter(task => task &&
-					testMaxDepth(task) &&
-					!tasks.find(otherTask => otherTask.url == task.url) &&
-					!newTasks.find(otherTask => otherTask != task && otherTask.url == task.url) &&
-					(!options.crawlInnerLinksOnly || task.isInnerLink) &&
-					(!options.crawlNoParent || isAllowedByNoParentOptions(task, options)));
-				tasks.splice(tasks.length, 0, ...newTasks);
+		try {
+			task.promise = capturePage(taskOptions);
+			const pageData = await task.promise;
+			task.status = STATE_PROCESSED;
+			if (pageData) {
+				task.filename = pageData.filename;
+				task.download = pageData.download;
+				task.downloadPath = pageData.downloadPath;
+				if (options.crawlLinks && testMaxDepth(task)) {
+					const urls = pageData.links;
+					let newTasks = await Promise.all(urls.map(url => createTask(url, options, task, task.rootTaskURL || task.url)));
+					newTasks = newTasks.filter(task => task &&
+						testMaxDepth(task) &&
+						!tasks.find(otherTask => otherTask.url == task.url) &&
+						!newTasks.find(otherTask => otherTask != task && otherTask.url == task.url) &&
+						(!options.crawlInnerLinksOnly || task.isInnerLink) &&
+						(!options.crawlNoParent || isAllowedByNoParentOptions(task, options)));
+					tasks.splice(tasks.length, 0, ...newTasks);
+				}
 			}
+		} catch (error) {
+			task.status = STATE_FAILED;
+			task.error = error.message || String(error);
 		}
 		await saveTasks();
 		await runTasks();
@@ -379,6 +386,7 @@ async function capturePage(options) {
 			await writeTextFile(options.debugMessagesFile, error.debugMessages.map(([timestamp, message]) =>
 				`[${new Date(timestamp).toISOString()}] ${message.join(" ")}`).join("\n"));
 		}
+		throw error;
 	}
 }
 
