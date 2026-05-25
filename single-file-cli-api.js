@@ -257,7 +257,7 @@ async function saveTasks() {
 			tasks.map(task => Object.assign({}, task, {
 				status: task.status == STATE_PROCESSING ? undefined : task.status,
 				promise: undefined,
-				options: task.status && task.status == STATE_PROCESSED ? undefined : task.options
+				options: task.status && task.status != STATE_PROCESSING ? undefined : task.options
 			}))
 		));
 	}
